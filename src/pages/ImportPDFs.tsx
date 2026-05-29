@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FileText, UploadCloud, CheckCircle, AlertCircle, Trash2, ArrowRight } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 import { Button } from '../components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/card';
 
@@ -21,6 +22,45 @@ export function ImportPDFs() {
   const [dragActive, setDragActive] = useState(false);
   const [invoices, setInvoices] = useState<ImportedInvoice[]>([]);
   const [selectedInvoice, setSelectedInvoice] = useState<ImportedInvoice | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  // Load existing files from Supabase Storage bucket 'PDF'
+  const loadInvoices = async () => {
+    try {
+      const { data, error } = await supabase.storage.from('PDF').list();
+      if (error) throw error;
+      if (data) {
+        // Filter out system files or folders if any
+        const filteredData = data.filter(file => file.name !== '.emptyFolderPlaceholder');
+        const loaded: ImportedInvoice[] = filteredData.map((file) => {
+          // Try to clean name prefix
+          const cleanName = file.name.includes('-') ? file.name.split('-').slice(1).join('-') : file.name;
+          return {
+            id: file.id || Math.random().toString(36).substring(2, 9),
+            name: file.name, // keep original for API calls
+            size: (file.metadata?.size ? (file.metadata.size / 1024 / 1024).toFixed(2) : '0.00') + ' MB',
+            status: 'completed',
+            extractedData: {
+              cpe: 'PT0002000123456789XX',
+              clientName: cleanName.replace('.pdf', ''),
+              tensionLevel: 'BTN',
+              contractedPower: '10.35 kVA',
+              totalConsumption: '1,450 kWh',
+            }
+          };
+        });
+        setInvoices(loaded);
+      }
+    } catch (err) {
+      console.error('Error loading invoices:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadInvoices();
+  }, []);
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
@@ -32,44 +72,62 @@ export function ImportPDFs() {
     }
   };
 
-  const processFile = (file: File) => {
+  const processFile = async (file: File) => {
+    const fileId = Math.random().toString(36).substring(2, 9);
+    const uniqueName = `${fileId}-${file.name}`;
+
     const newInvoice: ImportedInvoice = {
-      id: Math.random().toString(36).substr(2, 9),
-      name: file.name,
+      id: fileId,
+      name: uniqueName,
       size: (file.size / 1024 / 1024).toFixed(2) + ' MB',
       status: 'pending',
     };
 
     setInvoices((prev) => [newInvoice, ...prev]);
 
-    // Simulate IA parsing process
-    setTimeout(() => {
+    try {
+      // Set to processing
       setInvoices((prev) =>
         prev.map((inv) =>
-          inv.id === newInvoice.id ? { ...inv, status: 'processing' } : inv
+          inv.id === fileId ? { ...inv, status: 'processing' } : inv
         )
       );
 
-      setTimeout(() => {
-        setInvoices((prev) =>
-          prev.map((inv) =>
-            inv.id === newInvoice.id
-              ? {
-                  ...inv,
-                  status: 'completed',
-                  extractedData: {
-                    cpe: 'PT0002000123456789XX',
-                    clientName: 'Cliente Demo Lda',
-                    tensionLevel: 'BTN',
-                    contractedPower: '10.35 kVA',
-                    totalConsumption: '1,450 kWh',
-                  },
-                }
-              : inv
-          )
-        );
-      }, 2000);
-    }, 1500);
+      // Upload file to Supabase Storage bucket 'PDF'
+      const { error: uploadError } = await supabase.storage
+        .from('PDF')
+        .upload(uniqueName, file);
+
+      if (uploadError) throw uploadError;
+
+      // Extract dummy info for simulator integration
+      const cleanName = file.name.replace('.pdf', '');
+
+      setInvoices((prev) =>
+        prev.map((inv) =>
+          inv.id === fileId
+            ? {
+                ...inv,
+                status: 'completed',
+                extractedData: {
+                  cpe: 'PT0002000123456789XX',
+                  clientName: cleanName,
+                  tensionLevel: 'BTN',
+                  contractedPower: '10.35 kVA',
+                  totalConsumption: '1,450 kWh',
+                },
+              }
+            : inv
+        )
+      );
+    } catch (err: any) {
+      console.error('Upload error:', err);
+      setInvoices((prev) =>
+        prev.map((inv) =>
+          inv.id === fileId ? { ...inv, status: 'failed' } : inv
+        )
+      );
+    }
   };
 
   const handleDrop = (e: React.DragEvent) => {
@@ -93,11 +151,18 @@ export function ImportPDFs() {
     }
   };
 
-  const removeInvoice = (id: string, e: React.MouseEvent) => {
+  const removeInvoice = async (id: string, name: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    setInvoices((prev) => prev.filter((inv) => inv.id !== id));
-    if (selectedInvoice?.id === id) {
-      setSelectedInvoice(null);
+    try {
+      const { error } = await supabase.storage.from('PDF').remove([name]);
+      if (error) throw error;
+      
+      setInvoices((prev) => prev.filter((inv) => inv.id !== id));
+      if (selectedInvoice?.id === id) {
+        setSelectedInvoice(null);
+      }
+    } catch (err) {
+      console.error('Error removing invoice:', err);
     }
   };
 
@@ -106,7 +171,7 @@ export function ImportPDFs() {
       <div>
         <h1 className="text-3xl font-extrabold text-slate-800 tracking-tight">Importar PDFs</h1>
         <p className="text-slate-500 text-sm mt-1">
-          Envie faturas de energia para extração automática de dados de consumo por inteligência artificial.
+          Envie faturas de energia para o Supabase Storage e visualize os dados extraídos.
         </p>
       </div>
 
@@ -135,20 +200,22 @@ export function ImportPDFs() {
             </div>
             <h3 className="text-lg font-semibold text-slate-800">Arraste a fatura em PDF aqui</h3>
             <p className="text-slate-400 text-sm mt-1 mb-4">Ou clique para navegar no seu computador</p>
-            <div className="text-xs text-slate-400">Tamanho máximo de arquivo: 10MB (Apenas .pdf)</div>
+            <div className="text-xs text-slate-400">Os arquivos serão salvos diretamente no seu bucket 'PDF' do Supabase.</div>
           </div>
 
           {/* Invoices List */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Faturas Processadas</CardTitle>
+              <CardTitle className="text-lg">Faturas no Supabase Storage</CardTitle>
               <CardDescription>Visualize o progresso e clique em uma fatura para ver os dados extraídos.</CardDescription>
             </CardHeader>
             <CardContent>
-              {invoices.length === 0 ? (
+              {loading ? (
+                <div className="text-center py-10 text-slate-400">A carregar faturas...</div>
+              ) : invoices.length === 0 ? (
                 <div className="text-center py-10 text-slate-400 flex flex-col items-center justify-center">
                   <FileText className="h-12 w-12 text-slate-300 mb-2" />
-                  <p>Nenhuma fatura carregada ainda.</p>
+                  <p>Nenhuma fatura encontrada no bucket 'PDF'.</p>
                 </div>
               ) : (
                 <div className="divide-y divide-slate-100">
@@ -165,7 +232,9 @@ export function ImportPDFs() {
                           <FileText className="h-5 w-5 text-slate-600" />
                         </div>
                         <div>
-                          <p className="font-semibold text-slate-700 text-sm max-w-xs truncate">{inv.name}</p>
+                          <p className="font-semibold text-slate-700 text-sm max-w-xs truncate">
+                            {inv.name.includes('-') ? inv.name.split('-').slice(1).join('-') : inv.name}
+                          </p>
                           <p className="text-slate-400 text-xs">{inv.size}</p>
                         </div>
                       </div>
@@ -173,27 +242,27 @@ export function ImportPDFs() {
                       <div className="flex items-center gap-4">
                         {inv.status === 'pending' && (
                           <span className="text-xs font-semibold px-2.5 py-1 bg-amber-50 text-amber-700 border border-amber-100 rounded-full animate-pulse">
-                            Pendente
+                            Enviando...
                           </span>
                         )}
                         {inv.status === 'processing' && (
                           <span className="text-xs font-semibold px-2.5 py-1 bg-blue-50 text-blue-700 border border-blue-100 rounded-full animate-pulse">
-                            Analisando com IA...
+                            Processando...
                           </span>
                         )}
                         {inv.status === 'completed' && (
                           <span className="text-xs font-semibold px-2.5 py-1 bg-green-50 text-green-700 border border-green-100 rounded-full flex items-center gap-1.5">
-                            <CheckCircle className="h-3.5 w-3.5" /> Extraído
+                            <CheckCircle className="h-3.5 w-3.5" /> No Supabase
                           </span>
                         )}
                         {inv.status === 'failed' && (
                           <span className="text-xs font-semibold px-2.5 py-1 bg-red-50 text-red-700 border border-red-100 rounded-full flex items-center gap-1.5">
-                            <AlertCircle className="h-3.5 w-3.5" /> Falhou
+                            <AlertCircle className="h-3.5 w-3.5" /> Erro no envio
                           </span>
                         )}
 
                         <button
-                          onClick={(e) => removeInvoice(inv.id, e)}
+                          onClick={(e) => removeInvoice(inv.id, inv.name, e)}
                           className="text-slate-400 hover:text-red-500 transition-colors p-1.5 rounded-md hover:bg-slate-100"
                         >
                           <Trash2 className="h-4 w-4" />
