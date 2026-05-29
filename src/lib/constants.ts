@@ -23,7 +23,7 @@ export const ERSE_RATES = {
       'Tetra-horária': { Ponta: 0.015, Cheia: 0.010, Vazio: 0.005, SuperVazio: 0.002 }
     }
   },
-  
+
   // Power Rates
   TAR_POWER: {
     BTN: 0.15, // €/dia
@@ -38,6 +38,7 @@ export const FEES = {
   FTS: 0.0023, // Taxa Social FTS €/kWh
   CGS: 0.0015, // Custos Gestão Sistema €/kWh
   mFRR: 0.0008, // Reserva Restauração €/kWh
+  TAR_POWER_BTN: 0.15, // Termo de potência TAR BTN €/dia
 };
 
 export const BTN_POWER_OPTIONS = [

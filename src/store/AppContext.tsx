@@ -67,7 +67,7 @@ const defaultSuppliers: Supplier[] = [
     pricePower: 0.45,
     pricePowerContratada: 0.28,
     pricePowerPHP: 0.18,
-    includesTAR: false, // Will add TAR
+    includesTAR: false,
     includesFTS: false,
     includesCGS: false,
     includesmFRR: false,
@@ -77,6 +77,14 @@ const defaultSuppliers: Supplier[] = [
   }
 ];
 
+const SIMS_KEY = 'energia_saved_sims';
+
+export interface SavedSimulation {
+  name: string;
+  savedAt: string;
+  state: AppState;
+}
+
 interface AppContextType {
   state: AppState;
   updateClientData: (data: Partial<ClientData>) => void;
@@ -85,13 +93,26 @@ interface AppContextType {
   addSupplier: (supplier: Supplier) => void;
   updateSupplier: (id: string, supplier: Partial<Supplier>) => void;
   removeSupplier: (id: string) => void;
+  resetSimulation: () => void;
+  saveSimulation: (name: string) => void;
+  loadSimulation: (name: string) => void;
+  deleteSimulation: (name: string) => void;
+  listSimulations: () => SavedSimulation[];
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
+function defaultState(): AppState {
+  return {
+    clientData: defaultClientData,
+    consumptionProfile: defaultConsumptionProfile,
+    branding: defaultBranding,
+    suppliers: defaultSuppliers,
+  };
+}
+
 export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [state, setState] = useState<AppState>(() => {
-    // Try load from local storage
     const saved = localStorage.getItem('energia_state');
     if (saved) {
       try {
@@ -100,12 +121,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         console.error('Failed to parse saved state', e);
       }
     }
-    return {
-      clientData: defaultClientData,
-      consumptionProfile: defaultConsumptionProfile,
-      branding: defaultBranding,
-      suppliers: defaultSuppliers,
-    };
+    return defaultState();
   });
 
   const saveState = (newState: AppState) => {
@@ -143,6 +159,38 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     });
   };
 
+  const resetSimulation = () => {
+    const fresh = defaultState();
+    // keep current branding configuration
+    saveState({ ...fresh, branding: state.branding });
+  };
+
+  const listSimulations = (): SavedSimulation[] => {
+    try {
+      return JSON.parse(localStorage.getItem(SIMS_KEY) || '[]');
+    } catch {
+      return [];
+    }
+  };
+
+  const persistSims = (sims: SavedSimulation[]) =>
+    localStorage.setItem(SIMS_KEY, JSON.stringify(sims));
+
+  const saveSimulation = (name: string) => {
+    const sims = listSimulations().filter((s) => s.name !== name);
+    sims.unshift({ name, savedAt: new Date().toISOString(), state });
+    persistSims(sims);
+  };
+
+  const loadSimulation = (name: string) => {
+    const sim = listSimulations().find((s) => s.name === name);
+    if (sim) saveState(sim.state);
+  };
+
+  const deleteSimulation = (name: string) => {
+    persistSims(listSimulations().filter((s) => s.name !== name));
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -153,6 +201,11 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         addSupplier,
         updateSupplier,
         removeSupplier,
+        resetSimulation,
+        saveSimulation,
+        loadSimulation,
+        deleteSimulation,
+        listSimulations,
       }}
     >
       {children}

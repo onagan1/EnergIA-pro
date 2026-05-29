@@ -411,3 +411,40 @@ s3_secret_key = "env(S3_SECRET_KEY)"
 # declarative_schema_path = "./database"
 # JSON string passed through to pg-delta SQL formatting.
 # format_options = "{\"keywordCase\":\"upper\",\"indent\":2,\"maxWidth\":80,\"commaStyle\":\"trailing\"}"
+
+# ---- Edge Functions (migradas do EnergIA) ----
+[functions.extract-supplier-prices]
+verify_jwt = false
+
+[functions.send-to-dynamics]
+verify_jwt = false
+
+[functions.list-supplier-pdfs]
+verify_jwt = false
+
+[functions.extract-prices-from-storage]
+verify_jwt = false
+
+[functions.extract-network-tariffs]
+verify_jwt = false
+
+[functions.extract-commission-table-from-pdf]
+verify_jwt = true
+
+[functions.update-erc-data]
+verify_jwt = false
+
+[functions.update-mfrr-data]
+verify_jwt = false
+
+[functions.update-market-data]
+verify_jwt = false
+
+[functions.import-supplier-inclusions]
+verify_jwt = false
+
+[functions.process-email-queue]
+verify_jwt = true
+
+[functions.fetch-ren-market-data]
+verify_jwt = false

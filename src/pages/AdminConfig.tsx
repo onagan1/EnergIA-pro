@@ -4,10 +4,19 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../co
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Button } from '../components/ui/button';
+import { useToast } from '../hooks/use-toast';
+import {
+  ERCUpdateButton,
+  MFRRUpdateButton,
+  MarketDataUpdateButton,
+  InclusionsUpdateButton,
+} from '../components/market/MarketDataButtons';
+import { DynamicsIntegration } from '../components/market/DynamicsIntegration';
 
 export const AdminConfig = () => {
   const { state, updateBranding } = useAppContext();
   const { branding } = state;
+  const { toast } = useToast();
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
@@ -106,9 +115,37 @@ export const AdminConfig = () => {
           </div>
         </CardContent>
       </Card>
-      
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Dados de Mercado (ERSE / REN)</CardTitle>
+          <CardDescription>
+            Carregue os ficheiros descarregados de mercado.ren.pt para atualizar os custos ERC-ISP, mFRR e a matriz de inclusões por comercializador.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap gap-3">
+            <MarketDataUpdateButton />
+            <ERCUpdateButton />
+            <MFRRUpdateButton />
+            <InclusionsUpdateButton />
+          </div>
+          <p className="text-xs text-slate-400 mt-3">
+            Requer <code>VITE_SUPABASE_PROJECT_ID</code> configurado no .env e as edge functions implantadas.
+          </p>
+        </CardContent>
+      </Card>
+
+      <DynamicsIntegration state={state} />
+
       <div className="flex justify-end pt-4">
-        <Button className="w-full md:w-auto px-8" style={{ backgroundColor: branding.primaryColor }}>Guardar Configurações</Button>
+        <Button
+          className="w-full md:w-auto px-8"
+          style={{ backgroundColor: branding.primaryColor }}
+          onClick={() => toast({ title: 'Configurações guardadas', description: 'As alterações de branding foram aplicadas com sucesso.' })}
+        >
+          Guardar Configurações
+        </Button>
       </div>
 
     </div>

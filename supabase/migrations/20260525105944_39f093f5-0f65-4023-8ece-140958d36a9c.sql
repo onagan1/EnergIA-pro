@@ -1,0 +1,1 @@
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS margin_commission_pct numeric NOT NULL DEFAULT 0;

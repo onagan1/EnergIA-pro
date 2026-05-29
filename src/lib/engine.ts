@@ -1,5 +1,6 @@
 import { AppState, Supplier, ConsumptionProfile } from '../types';
-import { ERSE_RATES, FEES } from './constants';
+import { FEES } from './constants';
+import { getNetworkTariff, getBtnTarPerPeriod } from './networkTariffs';
 
 export interface CalculationResult {
   supplierId: string;
@@ -65,41 +66,36 @@ export function calculateCosts(state: AppState): CalculationResult[] {
       powerCost = (pc * supplier.pricePowerContratada * periodDays) + (php * supplier.pricePowerPHP * periodDays);
     }
     
-    // TAR (Tarifa Acesso Redes)
+    // TAR (Tarifa de Acesso às Redes) — valores reais ERSE 2026
     let tarCost = 0;
     if (!supplier.includesTAR) {
       const tension = consumptionProfile.tensionLevel;
       if (tension === 'BTN') {
         const tariffOpt = consumptionProfile.tariffOption;
-        // simplistic fallback to avoid deep nesting issues
-        if (tariffOpt === 'Simples') {
-           tarCost += cCheia * ERSE_RATES.TAR_ENERGY.BTN.Simples.Cheia;
-        } else if (tariffOpt === 'Bi-horária') {
-           tarCost += cCheia * ERSE_RATES.TAR_ENERGY.BTN['Bi-horária'].Cheia;
-           tarCost += cVazio * ERSE_RATES.TAR_ENERGY.BTN['Bi-horária'].Vazio;
-        } else if (tariffOpt === 'Tri-horária') {
-           tarCost += cPonta * ERSE_RATES.TAR_ENERGY.BTN['Tri-horária'].Ponta;
-           tarCost += cCheia * ERSE_RATES.TAR_ENERGY.BTN['Tri-horária'].Cheia;
-           tarCost += cVazio * ERSE_RATES.TAR_ENERGY.BTN['Tri-horária'].Vazio;
-        } else {
-           tarCost += cPonta * ERSE_RATES.TAR_ENERGY.BTN['Tetra-horária'].Ponta;
-           tarCost += cCheia * ERSE_RATES.TAR_ENERGY.BTN['Tetra-horária'].Cheia;
-           tarCost += cVazio * ERSE_RATES.TAR_ENERGY.BTN['Tetra-horária'].Vazio;
-           tarCost += cSVazio * ERSE_RATES.TAR_ENERGY.BTN['Tetra-horária'].SuperVazio;
-        }
-        tarCost += ERSE_RATES.TAR_POWER.BTN * periodDays;
+        // Mapear opção tarifária para o tipo usado nas tarifas reais BTN
+        const btnType: 'simples' | 'bi-horaria' | 'tri-horaria' =
+          tariffOpt === 'Simples'
+            ? 'simples'
+            : tariffOpt === 'Bi-horária'
+            ? 'bi-horaria'
+            : 'tri-horaria'; // Tri e Tetra usam o escalonamento tri-horário BTN
+        const btnRates = getBtnTarPerPeriod(btnType, pc);
+        tarCost += cPonta * btnRates.ponta;
+        tarCost += cCheia * btnRates.cheia;
+        tarCost += cVazio * btnRates.vazio;
+        tarCost += cSVazio * btnRates.superVazio;
+        // Termo de potência TAR BTN (€/dia)
+        tarCost += FEES.TAR_POWER_BTN * periodDays;
       } else {
-        // BTE/MT/AT/MAT
-        const rates = (ERSE_RATES.TAR_ENERGY as any)[tension]?.['Tetra-horária'];
-        if (rates) {
-           tarCost += cPonta * rates.Ponta;
-           tarCost += cCheia * rates.Cheia;
-           tarCost += cVazio * rates.Vazio;
-           tarCost += cSVazio * rates.SuperVazio;
-        }
-        const pRates = (ERSE_RATES.TAR_POWER as any)[tension];
-        if (pRates) {
-           tarCost += (pc * pRates.PC * periodDays) + (php * pRates.PHP * periodDays);
+        // BTE/MT/AT/MAT — tarifas de acesso às redes ERSE 2026
+        const t = getNetworkTariff(tension);
+        if (t) {
+          tarCost += cPonta * t.energyPonta;
+          tarCost += cCheia * t.energyCheia;
+          tarCost += cVazio * t.energyVazio;
+          tarCost += cSVazio * t.energySuperVazio;
+          // Potência contratada + potência em horas de ponta (€/kW.dia)
+          tarCost += (pc * t.contractedPowerPrice * periodDays) + (php * t.peakPowerPrice * periodDays);
         }
       }
     }
