@@ -1,0 +1,6 @@
+{
+  "name": "EnergIA",
+  "description": "App to manage energy, changed from Supabase to Firebase.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
