@@ -6,6 +6,7 @@ import { Settings, Users, Calculator, FileText, Zap, LogOut } from 'lucide-react
 import { Simulator } from './pages/Simulator';
 import { Suppliers } from './pages/Suppliers';
 import { AdminConfig } from './pages/AdminConfig';
+import { ImportPDFs } from './pages/ImportPDFs';
 import { Login } from './pages/Login';
 
 function Sidebar() {
@@ -15,6 +16,7 @@ function Sidebar() {
   const navItems = [
     { name: 'Nova Simulação', path: '/', icon: Calculator },
     { name: 'Comercializadores', path: '/suppliers', icon: Zap },
+    { name: 'Importar PDFs', path: '/import-pdf', icon: FileText },
     { name: 'Configurações Brand', path: '/admin', icon: Settings },
   ];
 
@@ -90,16 +92,17 @@ function Layout() {
             <div className="md:hidden flex items-center gap-2">
                <Zap className="h-6 w-6 text-[#3b82f6]" />
                <span className="font-semibold text-slate-800">EnergIA</span>
-            </div>
-        </header>
-        {/* Main Content */}
-        <main className="flex-1 overflow-auto p-6 md:p-6 pb-20">
-          <Routes>
-            <Route path="/" element={<Simulator />} />
-            <Route path="/suppliers" element={<Suppliers />} />
-            <Route path="/admin" element={<AdminConfig />} />
-          </Routes>
-        </main>
+             </div>
+         </header>
+         {/* Main Content */}
+         <main className="flex-1 overflow-auto p-6 md:p-6 pb-20">
+           <Routes>
+             <Route path="/" element={<Simulator />} />
+             <Route path="/suppliers" element={<Suppliers />} />
+             <Route path="/import-pdf" element={<ImportPDFs />} />
+             <Route path="/admin" element={<AdminConfig />} />
+           </Routes>
+         </main>
       </div>
     </div>
   );
