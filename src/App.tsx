@@ -12,7 +12,6 @@ import { Suppliers } from './pages/Suppliers';
 import { AdminConfig } from './pages/AdminConfig';
 import { ImportPDFs } from './pages/ImportPDFs';
 import { Users } from './pages/Users';
-import { Campaigns } from './pages/Campaigns';
 import { Profiles } from './pages/Profiles';
 import { Login } from './pages/Login';
 import {
@@ -123,9 +122,6 @@ function Sidebar() {
           <button className={linkClass('/users')} style={activeStyle('/users')} onClick={() => navigate('/users')}>
             <UsersIcon className="h-4.5 w-4.5" /> Utilizadores
           </button>
-          <button className={linkClass('/campaigns')} style={activeStyle('/campaigns')} onClick={() => navigate('/campaigns')}>
-            <Upload className="h-4.5 w-4.5" /> Upload Campanhas
-          </button>
           <button className={linkClass('/profiles')} style={activeStyle('/profiles')} onClick={() => navigate('/profiles')}>
             <Percent className="h-4.5 w-4.5" /> Perfis &amp; Comissões
           </button>
@@ -219,14 +215,6 @@ function TopBar() {
             <span>ADMIN</span>
             <span className="text-slate-300">|</span>
             <span className="text-slate-800">Utilizadores</span>
-          </div>
-        );
-      case '/campaigns':
-        return (
-          <div className="flex items-center gap-2 text-sm font-semibold text-slate-500">
-            <span>ADMIN</span>
-            <span className="text-slate-300">|</span>
-            <span className="text-slate-800">Upload Campanhas</span>
           </div>
         );
       case '/profiles':
@@ -330,7 +318,6 @@ function Layout() {
             <Route path="/import-pdf" element={<ImportPDFs />} />
             <Route path="/admin" element={<AdminConfig />} />
             <Route path="/users" element={<Users />} />
-            <Route path="/campaigns" element={<Campaigns />} />
             <Route path="/profiles" element={<Profiles />} />
           </Routes>
         </main>
