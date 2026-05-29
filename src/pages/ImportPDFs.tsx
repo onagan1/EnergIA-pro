@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { FileText, UploadCloud, CheckCircle, AlertCircle, Trash2, ArrowRight } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { useAppContext } from '../store/AppContext';
 import { Button } from '../components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/card';
 
@@ -19,6 +21,8 @@ interface ImportedInvoice {
 }
 
 export function ImportPDFs() {
+  const navigate = useNavigate();
+  const { updateClientData, updateConsumptionProfile } = useAppContext();
   const [dragActive, setDragActive] = useState(false);
   const [invoices, setInvoices] = useState<ImportedInvoice[]>([]);
   const [selectedInvoice, setSelectedInvoice] = useState<ImportedInvoice | null>(null);
@@ -166,6 +170,34 @@ export function ImportPDFs() {
     }
   };
 
+  const handleUseInSimulation = () => {
+    if (!selectedInvoice || !selectedInvoice.extractedData) return;
+
+    const data = selectedInvoice.extractedData;
+    
+    // Update client data
+    updateClientData({
+      name: data.clientName,
+      cpe: data.cpe,
+    });
+
+    // Clean contracted power format (e.g. "10.35 kVA" -> "10.35")
+    const cleanPower = data.contractedPower.replace(/[^\d.]/g, '');
+
+    // Clean consumption format (e.g. "1,450 kWh" -> 1450)
+    const cleanConsumption = parseFloat(data.totalConsumption.replace(/,/g, '').replace(/[^\d.]/g, '')) || 0;
+
+    // Update consumption profile
+    updateConsumptionProfile({
+      tensionLevel: data.tensionLevel as any,
+      contractedPower: cleanPower,
+      consumptionCheia: cleanConsumption, // Put total consumption into cheia as default
+    });
+
+    // Navigate to simulator page
+    navigate('/');
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -309,7 +341,10 @@ export function ImportPDFs() {
                     <p className="text-lg font-bold text-blue-600">{selectedInvoice.extractedData.totalConsumption}</p>
                   </div>
 
-                  <Button className="w-full h-11 flex items-center justify-center gap-2">
+                  <Button 
+                    onClick={handleUseInSimulation}
+                    className="w-full h-11 flex items-center justify-center gap-2"
+                  >
                     Usar na Simulação <ArrowRight className="h-4 w-4" />
                   </Button>
                 </div>
